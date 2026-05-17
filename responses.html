@@ -12,7 +12,58 @@
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+        }
+        
+        .title-gradient {
+            background: linear-gradient(135deg, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.05em;
+        }
 
+        .card-text h1, .card-text h2, .card-text h3 {
+            color: #f8fafc;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+        
+        .card-text h1 { font-size: 1.6rem; }
+        .card-text h2 { font-size: 1.4rem; }
+        .card-text h3 { font-size: 1.2rem; }
+
+        .card-text p {
+            line-height: 1.7;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-text ul, .card-text ol {
+            margin-bottom: 1.25rem;
+            padding-left: 1.5rem;
+        }
+
+        .card-text li {
+            margin-bottom: 0.5rem;
+            line-height: 1.6;
+        }
+
+        .card-text strong {
+            color: #f8fafc;
+        }
+
+        /* Stile personalizzato per l'interruttore switch di Bootstrap */
+        .form-switch .form-check-input {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+        .form-switch .form-check-input:checked {
+            background-color: #0dcaf0;
+            border-color: #0dcaf0;
+        }
     </style>
 </head>
 
@@ -23,12 +74,57 @@
         <div class="container">
             <h1 class="display-5 fw-bold title-gradient m-0">LLM Responses Dashboard</h1>
             <p class="text-muted small mt-2 mb-0 d-flex align-items-center justify-content-center gap-2">
+                Sincronizzato in tempo reale
             </p>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="container my-5">
+    <main class="container my-4">
+        
+        <!-- Form per inviare la domanda direttamente dall'interfaccia HTML -->
+        <div class="row mb-5 justify-content-center">
+            <div class="col-lg-8 col-md-10 col-12">
+                <div class="card text-bg-dark border-secondary shadow-sm p-4">
+                    <h5 class="card-title text-info mb-3">Invia una nuova domanda ai modelli</h5>
+                    <form id="ask-form">
+                        <div class="mb-3">
+                            <label for="prompt-input" class="form-label text-muted small">Inserisci la tua domanda</label>
+                            <textarea class="form-control text-bg-dark border-secondary text-white" id="prompt-input" rows="3" placeholder="Scrivi qui la tua domanda per i modelli..." required></textarea>
+                        </div>
+                        <div class="row align-items-end">
+                            <div class="col-md-5 col-12 mb-3 mb-md-0">
+                                <label for="loops-input" class="form-label text-muted small">Risposte per modello (cicli)</label>
+                                <input type="number" class="form-control text-bg-dark border-secondary text-white" id="loops-input" min="1" max="10" value="1" required>
+                            </div>
+                            <div class="col-md-7 col-12 d-flex gap-2">
+                                <button type="submit" class="btn btn-info flex-grow-1 fw-bold text-dark d-flex align-items-center justify-content-center gap-2" id="btn-submit">
+                                    <span>Invia Domanda</span>
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" id="btn-spinner"></span>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger fw-bold" id="btn-clear">Pulisci DB</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="alert alert-info mt-3 py-2 d-none" id="status-alert">
+                        Richiesta inviata con successo! Le risposte appariranno qui sotto in tempo reale.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Titolo Risposte e Switch Filtro -->
+        <div class="row mb-3 justify-content-center">
+            <div class="col-12 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-3">
+                <h3 class="text-white mb-0">Risposte dei Modelli</h3>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="success-toggle" checked>
+                    <label class="form-check-label text-muted small fw-bold" for="success-toggle">Mostra solo successo</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Griglia delle risposte -->
         <div class="row g-4" id="dashboard-container">
             <div class="col-12 text-center py-5">
                 <div class="spinner-border text-primary" role="status">
@@ -44,10 +140,33 @@
     <!-- Marked.js per il parsing di Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <!-- Dynamic Fetch Logic -->
+    <!-- Dynamic Fetch and API Interaction Logic -->
     <script>
         const container = document.getElementById('dashboard-container');
         let currentDataStr = "";
+
+        // Calcola dinamicamente la base URL se la pagina viene aperta da Apache (porta 80) o Flask (porta 5000)
+        const BASE_URL = window.location.port === '5000' ? '' : 'http://127.0.0.1:5000';
+
+        // Elementi del Form e Filtro
+        const askForm = document.getElementById('ask-form');
+        const promptInput = document.getElementById('prompt-input');
+        const loopsInput = document.getElementById('loops-input');
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const btnClear = document.getElementById('btn-clear');
+        const statusAlert = document.getElementById('status-alert');
+        const successToggle = document.getElementById('success-toggle');
+
+        let showOnlySuccess = true;
+
+        // Gestore del Toggle Filtro
+        successToggle.addEventListener('change', (e) => {
+            showOnlySuccess = e.target.checked;
+            if (currentDataStr) {
+                renderCards(JSON.parse(currentDataStr));
+            }
+        });
 
         function escapeHtml(unsafe) {
             if (!unsafe) return "";
@@ -61,7 +180,7 @@
 
         async function fetchResponses() {
             try {
-                const res = await fetch(`responses.json?t=${new Date().getTime()}`);
+                const res = await fetch(`${BASE_URL}/responses.json?t=${new Date().getTime()}`);
                 if (!res.ok) return;
 
                 const data = await res.json();
@@ -79,14 +198,20 @@
         function renderCards(data) {
             container.innerHTML = '';
 
-            const filteredData = data ? data.filter(item => item.status === 'success') : [];
+            // Filtro basato sullo stato dello switch
+            const filteredData = data ? data.filter(item => {
+                if (showOnlySuccess) {
+                    return item.status === 'success';
+                }
+                return true; // Se lo switch è disattivato, mostra sia successi che errori
+            }) : [];
 
             if (filteredData.length === 0) {
                 container.innerHTML = `
                     <div class="col-12 text-center py-5">
                         <div class="card text-bg-dark border-secondary p-5 d-inline-block shadow-sm">
-                            <h3 class="text-white-50">Nessuna risposta con successo</h3>
-                            <p class="text-muted m-0">Non ci sono ancora risposte andate a buon fine nel database.</p>
+                            <h3 class="text-white-50">Nessuna risposta da visualizzare</h3>
+                            <p class="text-muted m-0">Non ci sono risposte presenti o corrispondenti ai filtri attuali.</p>
                         </div>
                     </div>
                 `;
@@ -97,16 +222,21 @@
                 const modelName = item.model.split('/').pop().toUpperCase();
                 // Utilizza marked per convertire il Markdown in HTML gerarchico
                 const parsedResponse = marked.parse(item.response);
+                
+                const isSuccess = item.status === 'success';
+                const badgeClass = isSuccess ? 'bg-success-subtle text-success border-success' : 'bg-danger-subtle text-danger border-danger';
+                const borderClass = isSuccess ? 'border-secondary' : 'border-danger';
 
                 const cardHTML = `
                     <div class="col-12">
-                        <div class="card border-secondary h-100">
+                        <div class="card text-bg-dark ${borderClass} h-100 shadow-sm">
                             
                             <div class="card-body d-flex flex-column p-4">
                                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary border-opacity-25">
                                     <div class="fw-bold"><span class="text-info">Q:</span> ${escapeHtml(item.prompt)}</div>
+                                    <span class="badge ${badgeClass} border border-opacity-50 px-2 py-1 small text-uppercase">${escapeHtml(item.status)}</span>
                                 </div>
-                                <div class="card-text">${parsedResponse}</div>
+                                <div class="card-text text-white-50">${parsedResponse}</div>
                             </div>
                             <div class="card-footer d-flex justify-content-between border-secondary text-muted">
                                 <small class="font-monospace fw-bold text-info">${escapeHtml(modelName)}</small>
@@ -118,6 +248,66 @@
                 container.insertAdjacentHTML('beforeend', cardHTML);
             });
         }
+
+        // Gestore per l'invio della domanda tramite chiamata API
+        askForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const prompt = promptInput.value.trim();
+            const numLoops = parseInt(loopsInput.value) || 1;
+            
+            if (!prompt) return;
+            
+            // Disabilita i controlli durante l'invio
+            promptInput.disabled = true;
+            loopsInput.disabled = true;
+            btnSubmit.disabled = true;
+            btnSpinner.classList.remove('d-none');
+            statusAlert.classList.remove('d-none');
+            
+            try {
+                const res = await fetch(`${BASE_URL}/api/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, num_loops: numLoops })
+                });
+                
+                if (res.ok) {
+                    promptInput.value = '';
+                } else {
+                    alert('Errore durante l\'invio della domanda.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Errore di connessione al server Flask. Assicurati che app.py sia in esecuzione.');
+            } finally {
+                // Ripristina l'interfaccia
+                promptInput.disabled = false;
+                loopsInput.disabled = false;
+                btnSubmit.disabled = false;
+                btnSpinner.classList.add('d-none');
+                
+                setTimeout(() => {
+                    statusAlert.classList.add('d-none');
+                }, 6000);
+            }
+        });
+
+        // Gestore per pulire il database tramite chiamata API
+        btnClear.addEventListener('click', async () => {
+            if (!confirm('Sei sicuro di voler ripulire tutto il database?')) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/clear`, { method: 'POST' });
+                if (res.ok) {
+                    fetchResponses();
+                } else {
+                    alert('Errore durante la pulizia del database.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Errore di connessione al server Flask.');
+            }
+        });
 
         // Fetch immediato all'avvio
         fetchResponses();
