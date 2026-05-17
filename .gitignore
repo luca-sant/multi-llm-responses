@@ -1,0 +1,16 @@
+# Api Keys & Secrets
+.env
+
+# Databases & local data
+llm_responses.db
+responses.json
+
+# Python caching
+__pycache__/
+*.pyc
+
+# IDEs & System files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
