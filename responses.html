@@ -4,170 +4,1204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Dashboard dinamica delle risposte generate dai modelli LLM in parallelo con Bootstrap 5.2">
-    <title>LLM Responses Dashboard</title>
-    <!-- Bootstrap 5.2 CSS -->
+    <meta name="description" content="Dashboard premium per il test e confronto parallelo di modelli LLM.">
+    <title>LLM Parallel Arena</title>
+    <!-- Tailwind CSS (optional - but using premium vanilla CSS with custom styling instead for maximum control) -->
+    <!-- Bootstrap 5.2 CSS for grids & utility -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts Outfit & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #000000;
+        :root {
+            --bg-dark: #0a0d14;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-sidebar: rgba(10, 13, 20, 0.85);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --accent-primary: #6366f1; /* Indigo */
+            --accent-gemini: #0284c7;  /* Sky Blue */
+            --accent-openai: #10b981;  /* Emerald */
+            --accent-claude: #ec4899;  /* Pink/Purple */
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
         }
-        
-        .title-gradient {
-            background: linear-gradient(135deg, #60a5fa, #34d399);
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.08), transparent 30%);
+            background-attachment: fixed;
+        }
+
+        /* App Layout */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar Glassmorphism */
+        .sidebar {
+            width: 320px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            backdrop-filter: blur(20px);
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a5b4fc, #6366f1, #ec4899);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: -0.05em;
+            font-size: 1.4rem;
+            letter-spacing: -0.03em;
+            margin: 0;
         }
 
-        .card-text h1, .card-text h2, .card-text h3 {
-            color: #f8fafc;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            font-weight: 700;
-        }
-        
-        .card-text h1 { font-size: 1.6rem; }
-        .card-text h2 { font-size: 1.4rem; }
-        .card-text h3 { font-size: 1.2rem; }
-
-        .card-text p {
-            line-height: 1.7;
-            margin-bottom: 1.25rem;
+        .chat-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
         }
 
-        .card-text ul, .card-text ol {
-            margin-bottom: 1.25rem;
-            padding-left: 1.5rem;
+        .chat-list::-webkit-scrollbar {
+            width: 5px;
         }
 
-        .card-text li {
+        .chat-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1rem;
+            border-radius: 12px;
             margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .chat-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .chat-item-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden;
+            margin-right: 0.5rem;
+        }
+
+        .chat-item-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #f3f4f6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-item-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .chat-item-delete {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.25rem;
+            border-radius: 6px;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+
+        .chat-item:hover .chat-item-delete {
+            opacity: 1;
+        }
+
+        .chat-item-delete:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Main Chat Area */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: rgba(10, 13, 20, 0.3);
+            position: relative;
+        }
+
+        /* Header */
+        .main-header {
+            padding: 1.25rem 2rem;
+            background: rgba(10, 13, 20, 0.7);
+            border-bottom: 1px solid var(--border-glass);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .active-chat-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.15rem;
+            margin: 0;
+            color: #ffffff;
+        }
+
+        /* Model Badge list */
+        .model-badges {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .badge-model {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0.75rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .badge-model-gemini {
+            background: rgba(2, 132, 199, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(2, 132, 199, 0.3);
+        }
+
+        .badge-model-openai {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-model-claude {
+            background: rgba(236, 72, 153, 0.15);
+            color: #f472b6;
+            border: 1px solid rgba(236, 72, 153, 0.3);
+        }
+
+        /* Chat Feed */
+        .chat-feed {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .chat-feed::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-feed::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+        }
+
+        /* Message Turns */
+        .message-turn {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* User Bubble */
+        .user-message-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-bubble {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #ffffff;
+            padding: 0.85rem 1.25rem;
+            border-radius: 18px 18px 2px 18px;
+            max-width: 70%;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+            font-weight: 500;
+        }
+
+        /* Models Parallel Answers Row */
+        .model-answers-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.25rem;
+            width: 100%;
+        }
+
+        /* Model Card */
+        .model-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .model-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Specific model highlight borders */
+        .model-card.model-gemini {
+            border-left: 3px solid var(--accent-gemini);
+        }
+
+        .model-card.model-openai {
+            border-left: 3px solid var(--accent-openai);
+        }
+
+        .model-card.model-claude {
+            border-left: 3px solid var(--accent-claude);
+        }
+
+        .model-card-header {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .model-title-gemini { color: #38bdf8; }
+        .model-title-openai { color: #34d399; }
+        .model-title-claude { color: #f472b6; }
+
+        .model-card-actions {
+            display: flex;
+            gap: 0.35rem;
+        }
+
+        .btn-card-action {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.25rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-card-action:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .model-card-body {
+            padding: 1.25rem;
+            flex-grow: 1;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: #e5e7eb;
+            overflow-x: auto;
+        }
+
+        .model-card-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .model-card-footer {
+            padding: 0.5rem 1.25rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Status colors */
+        .status-success {
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .status-error {
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Skeleton loader shimmer */
+        .shimmer-card {
+            background: rgba(17, 24, 39, 0.4);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .shimmer-line {
+            height: 12px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+            background-size: 200% 100%;
+            animation: loading-shimmer 1.5s infinite;
+            border-radius: 4px;
+            margin-bottom: 0.75rem;
+        }
+
+        .shimmer-line:last-child {
+            width: 70%;
+        }
+
+        @keyframes loading-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Sticky Console (Input Bar) */
+        .console-container {
+            padding: 1.5rem 2rem 2rem 2rem;
+            background: rgba(10, 13, 20, 0.85);
+            border-top: 1px solid var(--border-glass);
+            backdrop-filter: blur(20px);
+        }
+
+        .console-box {
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .console-box:focus-within {
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+        }
+
+        .console-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+        }
+
+        .console-textarea {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 0.95rem;
+            resize: none;
+            max-height: 150px;
+            min-height: 40px;
+            padding: 0.5rem 0;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .console-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .btn-send {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            flex-shrink: 0;
+        }
+
+        .btn-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-send:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .console-options-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .console-settings {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .setting-input {
+            width: 45px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 6px;
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.1rem 0.35rem;
+            text-align: center;
+            outline: none;
+        }
+
+        /* Empty State */
+        .empty-feed-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            margin-bottom: 1.5rem;
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            border-radius: 24px;
+            width: 72px;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-primary);
+        }
+
+        .empty-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: #ffffff;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-subtitle {
+            max-width: 420px;
+            font-size: 0.9rem;
             line-height: 1.6;
         }
 
-        .card-text strong {
-            color: #f8fafc;
+        /* Copy tooltip message */
+        .toast-copy {
+            position: absolute;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(16, 185, 129, 0.95);
+            color: white;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
-        /* Stile personalizzato per l'interruttore switch di Bootstrap */
-        .form-switch .form-check-input {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+        /* Hamburger button for responsive mobile sidebar */
+        .sidebar-toggle {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.25rem;
             cursor: pointer;
+            display: none;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: background 0.2s;
         }
-        .form-switch .form-check-input:checked {
-            background-color: #0dcaf0;
-            border-color: #0dcaf0;
+
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Responsive styling */
+        @media (max-width: 992px) {
+            .sidebar-toggle {
+                display: block;
+            }
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .sidebar-overlay {
+                display: none;
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 90;
+            }
+            .sidebar-overlay.show {
+                display: block;
+            }
         }
     </style>
 </head>
 
-<body class="bg-black">
+<body>
+    <!-- App Container -->
+    <div class="app-container">
+        <!-- Sidebar overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <!-- Header -->
-    <header class="py-4 text-center text-white">
-        <div class="container">
-            <h1 class="display-5 fw-bold title-gradient m-0">LLM Responses Dashboard</h1>
-            <p class="text-muted small mt-2 mb-0 d-flex align-items-center justify-content-center gap-2">
-                Sincronizzato in tempo reale
-            </p>
-        </div>
-    </header>
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header d-flex align-items-center justify-content-between">
+                <h2 class="logo-text">LLM Parallel Arena</h2>
+            </div>
+            
+            <div class="p-3 border-bottom border-secondary border-opacity-25">
+                <button class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2 fw-semibold" style="border-radius: 12px; padding: 0.65rem;" id="btn-new-chat">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Nuova Chat
+                </button>
+            </div>
 
-    <!-- Main Container -->
-    <main class="container my-4">
-        
-        <!-- Form per inviare la domanda direttamente dall'interfaccia HTML -->
-        <div class="row mb-5 justify-content-center">
-            <div class="col-lg-8 col-md-10 col-12">
-                <div class="card text-bg-dark border-secondary shadow-sm p-4">
-                    <h5 class="card-title text-info mb-3">Invia una nuova domanda ai modelli</h5>
-                    <form id="ask-form">
-                        <div class="mb-3">
-                            <label for="prompt-input" class="form-label text-muted small">Inserisci la tua domanda</label>
-                            <textarea class="form-control text-bg-dark border-secondary text-white" id="prompt-input" rows="3" placeholder="Scrivi qui la tua domanda per i modelli..." required></textarea>
+            <div class="chat-list" id="chat-list-container">
+                <!-- Chat items loaded dynamically -->
+                <div class="text-center text-muted py-5 small">Caricamento chat...</div>
+            </div>
+
+            <div class="p-3 border-top border-secondary border-opacity-25 bg-dark bg-opacity-25">
+                <button class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 text-danger border-danger border-opacity-25 hover-bg-danger" style="border-radius: 10px; font-size: 0.85rem;" id="btn-clear-db">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Svuota Intero DB
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="main-content">
+            <!-- Copy Successful Toast -->
+            <div class="toast-copy" id="toast-copy">Risposta copiata negli appunti!</div>
+
+            <!-- Top Header -->
+            <header class="main-header">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="sidebar-toggle" id="btn-sidebar-toggle">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <h3 class="active-chat-title" id="active-chat-title">Caricamento sessione...</h3>
+                </div>
+                
+                <div class="model-badges">
+                    <span class="badge-model badge-model-gemini">
+                        <span class="d-inline-block bg-info" style="width: 6px; height: 6px; border-radius: 50%;"></span>
+                        Gemini Flash
+                    </span>
+                    <span class="badge-model badge-model-openai">
+                        <span class="d-inline-block bg-success" style="width: 6px; height: 6px; border-radius: 50%;"></span>
+                        GPT-4o Mini
+                    </span>
+                    <span class="badge-model badge-model-claude">
+                        <span class="d-inline-block bg-danger" style="width: 6px; height: 6px; border-radius: 50%;"></span>
+                        Claude Haiku 4.5
+                    </span>
+                </div>
+            </header>
+
+            <!-- Chat Message Feed -->
+            <div class="chat-feed" id="chat-feed">
+                <!-- Message turns loaded dynamically -->
+            </div>
+
+            <!-- Sticky Console Area -->
+            <div class="console-container">
+                <form id="ask-form">
+                    <div class="console-box">
+                        <div class="console-input-row">
+                            <textarea class="console-textarea" id="prompt-input" rows="1" placeholder="Fai una domanda ai modelli in parallelo..." required></textarea>
+                            <button type="submit" class="btn-send" id="btn-submit" title="Invia prompt">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </button>
                         </div>
-                        <div class="row align-items-end">
-                            <div class="col-md-5 col-12 mb-3 mb-md-0">
-                                <label for="loops-input" class="form-label text-muted small">Risposte per modello (cicli)</label>
-                                <input type="number" class="form-control text-bg-dark border-secondary text-white" id="loops-input" min="1" max="10" value="1" required>
+                        <div class="console-options-row">
+                            <div class="console-settings">
+                                <div class="setting-item">
+                                    <span>Ripetizioni (cicli):</span>
+                                    <input type="number" class="setting-input" id="loops-input" min="1" max="10" value="1" required>
+                                </div>
+                                <div class="setting-item">
+                                    <span class="text-muted">Attesa di 30s tra cicli</span>
+                                </div>
                             </div>
-                            <div class="col-md-7 col-12 d-flex gap-2">
-                                <button type="submit" class="btn btn-info flex-grow-1 fw-bold text-dark d-flex align-items-center justify-content-center gap-2" id="btn-submit">
-                                    <span>Invia Domanda</span>
-                                    <span class="spinner-border spinner-border-sm d-none" role="status" id="btn-spinner"></span>
-                                </button>
-                                <button type="button" class="btn btn-outline-danger fw-bold" id="btn-clear">Pulisci DB</button>
+                            <div>
+                                <span class="text-muted fs-xs">Premi Invio per inviare</span>
                             </div>
                         </div>
-                    </form>
-                    <div class="alert alert-info mt-3 py-2 d-none" id="status-alert">
-                        Richiesta inviata con successo! Le risposte appariranno qui sotto in tempo reale.
                     </div>
-                </div>
+                </form>
             </div>
-        </div>
-
-        <!-- Sezione Titolo Risposte e Switch Filtro -->
-        <div class="row mb-3 justify-content-center">
-            <div class="col-12 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-3">
-                <h3 class="text-white mb-0">Risposte dei Modelli</h3>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="success-toggle" checked>
-                    <label class="form-check-label text-muted small fw-bold" for="success-toggle">Mostra solo successo</label>
-                </div>
-            </div>
-        </div>
-
-        <!-- Griglia delle risposte -->
-        <div class="row g-4" id="dashboard-container">
-            <div class="col-12 text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Caricamento...</span>
-                </div>
-                <h4 class="mt-3 text-muted">Caricamento dati...</h4>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Bootstrap 5.2 Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Marked.js per il parsing di Markdown -->
+    <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <!-- Dynamic Fetch and API Interaction Logic -->
     <script>
-        const container = document.getElementById('dashboard-container');
-        let currentDataStr = "";
-
-        // Calcola dinamicamente la base URL se la pagina viene aperta da Apache (porta 80) o Flask (porta 5000)
+        // Configurazione Modelli e URL
+        const MODELS = ["gemini/gemini-2.5-flash", "openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"];
         const BASE_URL = window.location.port === '5000' ? '' : 'http://127.0.0.1:5000';
 
-        // Elementi del Form e Filtro
-        const askForm = document.getElementById('ask-form');
+        // State Management
+        let currentChatId = localStorage.getItem('currentChatId') || null;
+        let chatsList = [];
+        let allResponses = [];
+        let pendingQuestion = null; // Memorizza la domanda inviata prima che arrivino le risposte del db
+
+        // Elementi DOM
+        const chatFeed = document.getElementById('chat-feed');
+        const chatListContainer = document.getElementById('chat-list-container');
+        const activeChatTitle = document.getElementById('active-chat-title');
         const promptInput = document.getElementById('prompt-input');
         const loopsInput = document.getElementById('loops-input');
         const btnSubmit = document.getElementById('btn-submit');
-        const btnSpinner = document.getElementById('btn-spinner');
-        const btnClear = document.getElementById('btn-clear');
-        const statusAlert = document.getElementById('status-alert');
-        const successToggle = document.getElementById('success-toggle');
+        const btnNewChat = document.getElementById('btn-new-chat');
+        const btnClearDb = document.getElementById('btn-clear-db');
+        const askForm = document.getElementById('ask-form');
+        const toastCopy = document.getElementById('toast-copy');
 
-        let showOnlySuccess = true;
+        // Mobile layout elements
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const btnSidebarToggle = document.getElementById('btn-sidebar-toggle');
 
-        // Gestore del Toggle Filtro
-        successToggle.addEventListener('change', (e) => {
-            showOnlySuccess = e.target.checked;
-            if (currentDataStr) {
-                renderCards(JSON.parse(currentDataStr));
+        // Configurazione marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        // Toggle Sidebar su Mobile
+        function toggleSidebar() {
+            sidebar.classList.toggle('show');
+            sidebarOverlay.classList.toggle('show');
+        }
+
+        btnSidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // Auto-ridimensionamento textarea dell'input console
+        promptInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight - 10) + 'px';
+        });
+
+        // Invio tramite tasto Invio (senza shift)
+        promptInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                btnSubmit.click();
             }
         });
 
+        // Copia risposta
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                toastCopy.style.opacity = '1';
+                setTimeout(() => {
+                    toastCopy.style.opacity = '0';
+                }, 2000);
+            });
+        }
+
+        // Recupera la lista dei chat thread dal backend
+        async function fetchChats() {
+            try {
+                const res = await fetch(`${BASE_URL}/api/chats?t=${Date.now()}`);
+                if (!res.ok) return;
+                chatsList = await res.json();
+                renderSidebar();
+            } catch (error) {
+                console.error("Errore recupero lista chat:", error);
+            }
+        }
+
+        // Renderizza la barra laterale
+        function renderSidebar() {
+            chatListContainer.innerHTML = '';
+            
+            if (chatsList.length === 0) {
+                chatListContainer.innerHTML = `
+                    <div class="text-center text-muted py-5 px-3">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" class="mb-2 opacity-50" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <p class="m-0 small">Nessuna chat attiva.<br>Fai una domanda per iniziare!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            chatsList.forEach(chat => {
+                const isActive = chat.chat_id === currentChatId;
+                const formattedDate = new Date(chat.created_at).toLocaleString('it-IT', {
+                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                });
+
+                const chatItemHTML = `
+                    <div class="chat-item ${isActive ? 'active' : ''}" data-id="${chat.chat_id}">
+                        <div class="chat-item-info">
+                            <span class="chat-item-title">${escapeHtml(chat.title)}</span>
+                            <span class="chat-item-date">${formattedDate}</span>
+                        </div>
+                        <button class="chat-item-delete" title="Elimina chat" data-id="${chat.chat_id}">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+                chatListContainer.insertAdjacentHTML('beforeend', chatItemHTML);
+            });
+
+            // Gestori per click sugli elementi della chat e sul cestino
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.chat-item-delete')) return; // Gestito separatamente
+                    const chatId = item.getAttribute('data-id');
+                    selectChat(chatId);
+                });
+            });
+
+            document.querySelectorAll('.chat-item-delete').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const chatId = btn.getAttribute('data-id');
+                    if (confirm("Eliminare questa chat? L'operazione rimuoverà la cronologia correlata dal DB.")) {
+                        await deleteChat(chatId);
+                    }
+                });
+            });
+        }
+
+        // Elimina chat specifica dal backend
+        async function deleteChat(chatId) {
+            try {
+                const res = await fetch(`${BASE_URL}/api/chats/${chatId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    if (currentChatId === chatId) {
+                        currentChatId = null;
+                        localStorage.removeItem('currentChatId');
+                    }
+                    await fetchChats();
+                    await fetchResponses();
+                } else {
+                    alert("Errore durante l'eliminazione della chat.");
+                }
+            } catch (error) {
+                console.error("Errore cancellazione chat:", error);
+            }
+        }
+
+        // Seleziona una chat
+        function selectChat(chatId) {
+            currentChatId = chatId;
+            localStorage.setItem('currentChatId', chatId);
+            pendingQuestion = null; // Resetta gli stati in sospeso
+            
+            // Chiudi sidebar mobile se attiva
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+
+            renderSidebar();
+            renderChat();
+        }
+
+        // Pulsante nuova chat
+        btnNewChat.addEventListener('click', () => {
+            currentChatId = null;
+            localStorage.removeItem('currentChatId');
+            pendingQuestion = null;
+            renderSidebar();
+            renderChat();
+            promptInput.value = '';
+            promptInput.focus();
+        });
+
+        // Svuota intero DB
+        btnClearDb.addEventListener('click', async () => {
+            if (!confirm("Sei sicuro di voler svuotare l'intero database? Tutte le chat e le risposte andranno perse.")) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/clear`, { method: 'POST' });
+                if (res.ok) {
+                    currentChatId = null;
+                    localStorage.removeItem('currentChatId');
+                    pendingQuestion = null;
+                    await fetchChats();
+                    await fetchResponses();
+                } else {
+                    alert("Errore durante lo svuotamento del database.");
+                }
+            } catch (error) {
+                console.error("Errore:", error);
+            }
+        });
+
+        // Recupera risposte complessive in JSON
+        async function fetchResponses() {
+            try {
+                const res = await fetch(`${BASE_URL}/responses.json?t=${Date.now()}`);
+                if (!res.ok) return;
+                allResponses = await res.json();
+                
+                // Aggiorna la vista
+                renderChat();
+            } catch (error) {
+                console.log("In attesa del database...");
+            }
+        }
+
+        // Restituisce l'icona e il nome umano di ogni modello
+        function getModelInfo(model) {
+            const shortName = model.split('/').pop();
+            if (model.includes('gemini')) {
+                return {
+                    name: 'Gemini 2.5 Flash',
+                    class: 'model-gemini',
+                    titleClass: 'model-title-gemini',
+                    logoColor: '#0284c7'
+                };
+            } else if (model.includes('openai')) {
+                return {
+                    name: 'GPT-4o Mini',
+                    class: 'model-openai',
+                    titleClass: 'model-title-openai',
+                    logoColor: '#10b981'
+                };
+            } else {
+                return {
+                    name: 'Claude Haiku 4.5',
+                    class: 'model-claude',
+                    titleClass: 'model-title-claude',
+                    logoColor: '#ec4899'
+                };
+            }
+        }
+
+        // Raggruppa e renderizza la chat attiva
+        function renderChat() {
+            // Aggiorna titolo header
+            if (currentChatId) {
+                const activeChat = chatsList.find(c => c.chat_id === currentChatId);
+                activeChatTitle.textContent = activeChat ? activeChat.title : "Conversazione Attiva";
+            } else {
+                activeChatTitle.textContent = "Nuova Conversazione";
+            }
+
+            // Filtra le risposte per la chat corrente
+            const currentResponses = allResponses.filter(r => r.chat_id === currentChatId);
+
+            // Raggruppa per question_id
+            const groups = {};
+            currentResponses.forEach(item => {
+                const key = item.question_id || `legacy_${item.prompt}`;
+                if (!groups[key]) {
+                    groups[key] = {
+                        question_id: item.question_id,
+                        prompt: item.prompt,
+                        timestamp: item.timestamp,
+                        responses: []
+                    };
+                }
+                groups[key].responses.push(item);
+            });
+
+            // Converti in array e ordina cronologicamente (ASC)
+            const sortedTurns = Object.values(groups).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+            // Se la chat è vuota e non ci sono attività pendenti, mostra stato vuoto
+            if (sortedTurns.length === 0 && !pendingQuestion) {
+                chatFeed.innerHTML = `
+                    <div class="empty-feed-container">
+                        <div class="empty-icon">
+                            <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <h4 class="empty-title">Confronto LLM in Parallelo</h4>
+                        <p class="empty-subtitle">Invia una domanda per avviare il confronto simultaneo tra Gemini 2.5 Flash, GPT-4o Mini e Claude Haiku 4.5 in modalità chat a più turni.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Svuota e ri-costruisci il feed
+            chatFeed.innerHTML = '';
+
+            // Renderizza i turni salvati nel DB
+            sortedTurns.forEach(turn => {
+                renderMessageTurn(turn.prompt, turn.responses);
+            });
+
+            // Se c'è una domanda pendente (in elaborazione) non ancora completata, renderizza i suoi shimmer loaders
+            if (pendingQuestion && pendingQuestion.chat_id === currentChatId) {
+                // Controlla se abbiamo già delle risposte live nel DB per questa domanda pendente
+                const dbTurn = sortedTurns.find(t => t.question_id === pendingQuestion.question_id);
+                const responsesForPending = dbTurn ? dbTurn.responses : [];
+                
+                // Se tutti i modelli hanno risposto, possiamo rimuovere lo stato pendente
+                const completedModels = responsesForPending.map(r => r.model);
+                const allDone = MODELS.every(m => completedModels.includes(m));
+                
+                if (allDone) {
+                    pendingQuestion = null;
+                } else {
+                    renderMessageTurn(pendingQuestion.prompt, responsesForPending, true);
+                }
+            }
+        }
+
+        // Renderizza un singolo turno (Domanda Utente + Risposte Modelli in griglia)
+        function renderMessageTurn(prompt, responsesList, showPendingShimmers = false) {
+            const turnId = responsesList.length > 0 ? (responsesList[0].question_id || 'legacy') : 'pending';
+
+            // Crea elemento contenitore del turno
+            const turnElement = document.createElement('div');
+            turnElement.className = 'message-turn';
+            turnElement.setAttribute('data-turn-id', turnId);
+
+            // 1. Bolla Utente
+            const userHTML = `
+                <div class="user-message-container">
+                    <div class="user-bubble">${escapeHtml(prompt)}</div>
+                </div>
+            `;
+            turnElement.insertAdjacentHTML('beforeend', userHTML);
+
+            // 2. Griglia delle risposte dei modelli
+            const answersRow = document.createElement('div');
+            answersRow.className = 'model-answers-row';
+
+            // Mappa le risposte per model_name
+            const responseMap = {};
+            responsesList.forEach(r => {
+                responseMap[r.model] = r;
+            });
+
+            // Per ciascuno dei modelli del test
+            MODELS.forEach(model => {
+                const info = getModelInfo(model);
+                const savedResponse = responseMap[model];
+
+                if (savedResponse) {
+                    // C'è una risposta nel DB per questo modello
+                    const isSuccess = savedResponse.status === 'success';
+                    const parsedMarkdown = isSuccess ? marked.parse(savedResponse.response) : escapeHtml(savedResponse.response);
+                    const statusText = isSuccess 
+                        ? `<span class="status-success"><svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/></svg>Successo</span>`
+                        : `<span class="status-error"><svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/></svg>Errore</span>`;
+
+                    const cardHTML = `
+                        <div class="model-card ${info.class}">
+                            <div class="model-card-header">
+                                <span class="model-title ${info.titleClass}">${info.name}</span>
+                                <div class="model-card-actions">
+                                    <button class="btn-card-action btn-copy" title="Copia risposta" data-model="${model}">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="model-card-body">${parsedMarkdown}</div>
+                            <div class="model-card-footer">
+                                ${statusText}
+                                <span>${savedResponse.timestamp.split(' ')[1]}</span>
+                            </div>
+                        </div>
+                    `;
+                    answersRow.insertAdjacentHTML('beforeend', cardHTML);
+                } else if (showPendingShimmers) {
+                    // La risposta non è ancora arrivata, ma il turno è in elaborazione -> mostra shimmer loader
+                    const shimmerHTML = `
+                        <div class="model-card shimmer-card ${info.class}">
+                            <div class="model-card-header">
+                                <span class="model-title text-muted d-flex align-items-center gap-2">
+                                    <span class="spinner-border spinner-border-sm" role="status" style="width: 10px; height: 10px;"></span>
+                                    ${info.name}...
+                                </span>
+                            </div>
+                            <div class="model-card-body">
+                                <div class="shimmer-line" style="width: 90%;"></div>
+                                <div class="shimmer-line" style="width: 100%;"></div>
+                                <div class="shimmer-line" style="width: 60%;"></div>
+                            </div>
+                            <div class="model-card-footer">
+                                <span class="text-muted">Generazione in corso...</span>
+                                <span>--:--:--</span>
+                            </div>
+                        </div>
+                    `;
+                    answersRow.insertAdjacentHTML('beforeend', shimmerHTML);
+                }
+            });
+
+            // Gestore copia per questo blocco
+            answersRow.querySelectorAll('.btn-copy').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const model = btn.getAttribute('data-model');
+                    const text = responseMap[model] ? responseMap[model].response : "";
+                    copyToClipboard(text);
+                });
+            });
+
+            turnElement.appendChild(answersRow);
+            chatFeed.appendChild(turnElement);
+        }
+
+        // Auto-scorrimento verso il basso
+        function scrollToBottom() {
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+        }
+
+        // Gestore per l'invio del form prompt
+        askForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const prompt = promptInput.value.trim();
+            const numLoops = parseInt(loopsInput.value) || 1;
+
+            if (!prompt) return;
+
+            // Disabilita controlli per prevenire doppi invii
+            promptInput.disabled = true;
+            loopsInput.disabled = true;
+            btnSubmit.disabled = true;
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        num_loops: numLoops,
+                        chat_id: currentChatId // Se null, il server ne creerà uno nuovo
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Se non eravamo in una chat, aggiorna la sessione corrente con il nuovo chat_id generato
+                    if (!currentChatId) {
+                        currentChatId = data.chat_id;
+                        localStorage.setItem('currentChatId', currentChatId);
+                    }
+
+                    // Imposta lo stato pendente per renderizzare immediatamente gli shimmer loader
+                    pendingQuestion = {
+                        chat_id: currentChatId,
+                        question_id: data.question_id,
+                        prompt: prompt
+                    };
+
+                    // Svuota l'input
+                    promptInput.value = '';
+                    promptInput.style.height = 'auto';
+
+                    // Forza aggiornamento dell'interfaccia e scorri in basso
+                    await fetchChats();
+                    await fetchResponses();
+                    scrollToBottom();
+                } else {
+                    alert("Errore durante l'invio della domanda.");
+                }
+            } catch (error) {
+                console.error("Errore invio prompt:", error);
+                alert("Errore di connessione al server Flask. Assicurati che app.py sia in esecuzione.");
+            } finally {
+                // Riabilita i controlli
+                promptInput.disabled = false;
+                loopsInput.disabled = false;
+                btnSubmit.disabled = false;
+                promptInput.focus();
+            }
+        });
+
+        // Funzione helper per l'escaping dei caratteri HTML speciali
         function escapeHtml(unsafe) {
             if (!unsafe) return "";
             return String(unsafe)
@@ -178,142 +1212,21 @@
                 .replace(/'/g, "&#039;");
         }
 
-        async function fetchResponses() {
-            try {
-                const res = await fetch(`${BASE_URL}/responses.json?t=${new Date().getTime()}`);
-                if (!res.ok) return;
+        // Avvio e Polling periodico
+        async function init() {
+            await fetchChats();
+            await fetchResponses();
+            scrollToBottom();
 
-                const data = await res.json();
-                const newDataStr = JSON.stringify(data);
-
-                if (newDataStr !== currentDataStr) {
-                    currentDataStr = newDataStr;
-                    renderCards(data);
-                }
-            } catch (error) {
-                console.log("In attesa di dati JSON...");
-            }
+            // Polling per rilevare nuovi dati dal server ogni 2 secondi
+            setInterval(async () => {
+                await fetchResponses();
+                // Inoltre, aggiorna la lista chat per visualizzare modifiche recenti (per es. nuovi titoli)
+                await fetchChats();
+            }, 2000);
         }
 
-        function renderCards(data) {
-            container.innerHTML = '';
-
-            // Filtro basato sullo stato dello switch
-            const filteredData = data ? data.filter(item => {
-                if (showOnlySuccess) {
-                    return item.status === 'success';
-                }
-                return true; // Se lo switch è disattivato, mostra sia successi che errori
-            }) : [];
-
-            if (filteredData.length === 0) {
-                container.innerHTML = `
-                    <div class="col-12 text-center py-5">
-                        <div class="card text-bg-dark border-secondary p-5 d-inline-block shadow-sm">
-                            <h3 class="text-white-50">Nessuna risposta da visualizzare</h3>
-                            <p class="text-muted m-0">Non ci sono risposte presenti o corrispondenti ai filtri attuali.</p>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            filteredData.forEach(item => {
-                const modelName = item.model.split('/').pop().toUpperCase();
-                // Utilizza marked per convertire il Markdown in HTML gerarchico
-                const parsedResponse = marked.parse(item.response);
-                
-                const isSuccess = item.status === 'success';
-                const badgeClass = isSuccess ? 'bg-success-subtle text-success border-success' : 'bg-danger-subtle text-danger border-danger';
-                const borderClass = isSuccess ? 'border-secondary' : 'border-danger';
-
-                const cardHTML = `
-                    <div class="col-12">
-                        <div class="card text-bg-dark ${borderClass} h-100 shadow-sm">
-                            
-                            <div class="card-body d-flex flex-column p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary border-opacity-25">
-                                    <div class="fw-bold"><span class="text-info">Q:</span> ${escapeHtml(item.prompt)}</div>
-                                    <span class="badge ${badgeClass} border border-opacity-50 px-2 py-1 small text-uppercase">${escapeHtml(item.status)}</span>
-                                </div>
-                                <div class="card-text text-white-50">${parsedResponse}</div>
-                            </div>
-                            <div class="card-footer d-flex justify-content-between border-secondary text-muted">
-                                <small class="font-monospace fw-bold text-info">${escapeHtml(modelName)}</small>
-                                <small>${escapeHtml(item.timestamp)}</small>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', cardHTML);
-            });
-        }
-
-        // Gestore per l'invio della domanda tramite chiamata API
-        askForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const prompt = promptInput.value.trim();
-            const numLoops = parseInt(loopsInput.value) || 1;
-            
-            if (!prompt) return;
-            
-            // Disabilita i controlli durante l'invio
-            promptInput.disabled = true;
-            loopsInput.disabled = true;
-            btnSubmit.disabled = true;
-            btnSpinner.classList.remove('d-none');
-            statusAlert.classList.remove('d-none');
-            
-            try {
-                const res = await fetch(`${BASE_URL}/api/ask`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, num_loops: numLoops })
-                });
-                
-                if (res.ok) {
-                    promptInput.value = '';
-                } else {
-                    alert('Errore durante l\'invio della domanda.');
-                }
-            } catch (error) {
-                console.error(error);
-                alert('Errore di connessione al server Flask. Assicurati che app.py sia in esecuzione.');
-            } finally {
-                // Ripristina l'interfaccia
-                promptInput.disabled = false;
-                loopsInput.disabled = false;
-                btnSubmit.disabled = false;
-                btnSpinner.classList.add('d-none');
-                
-                setTimeout(() => {
-                    statusAlert.classList.add('d-none');
-                }, 6000);
-            }
-        });
-
-        // Gestore per pulire il database tramite chiamata API
-        btnClear.addEventListener('click', async () => {
-            if (!confirm('Sei sicuro di voler ripulire tutto il database?')) return;
-            try {
-                const res = await fetch(`${BASE_URL}/api/clear`, { method: 'POST' });
-                if (res.ok) {
-                    fetchResponses();
-                } else {
-                    alert('Errore durante la pulizia del database.');
-                }
-            } catch (error) {
-                console.error(error);
-                alert('Errore di connessione al server Flask.');
-            }
-        });
-
-        // Fetch immediato all'avvio
-        fetchResponses();
-
-        // Polling automatico ogni 2 secondi
-        setInterval(fetchResponses, 2000);
+        init();
     </script>
 </body>
 
